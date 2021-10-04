@@ -1,0 +1,106 @@
+diff -uNr source/app/PccAppEncoder/PccAppEncoder.cpp source-re/app/PccAppEncoder/PccAppEncoder.cpp
+--- source/app/PccAppEncoder/PccAppEncoder.cpp	2020-12-11 19:20:07.000000000 +0800
++++ source-re/app/PccAppEncoder/PccAppEncoder.cpp	2021-07-31 17:17:05.524130100 +0800
+@@ -54,6 +54,15 @@
+ 
+   using namespace std::chrono;
+   using ms       = milliseconds;
++#if CALC_OUTPUT_AVG_DISTORTION
++  auto totalWall = duration_cast<ms>( clockWall.count() ).count();
++  auto totalUserSelf = duration_cast<ms>( clockUser.self.count() ).count();
++  auto totalUserChild = duration_cast<ms>( clockUser.children.count() ).count();
++  std::cout << ( ret == 0 ? totalWall / 1000.0 : -1 ) << "\t" << ( ret == 0 ? totalUserSelf / 1000.0 : -1 ) << "\t" << ( ret == 0 ? totalUserChild / 1000.0 : -1 ) << "\n";
++  std::cout << "Processing time (wall): " << ( ret == 0 ? totalWall / 1000.0 : -1 ) << " s\n";  
++  std::cout << "Processing time (user.self): " << ( ret == 0 ? totalUserSelf / 1000.0 : -1 ) << " s\n";  
++  std::cout << "Processing time (user.children): " << ( ret == 0 ? totalUserChild / 1000.0 : -1 ) << " s\n";
++#else
+   auto totalWall = duration_cast<ms>( clockWall.count() ).count();
+   std::cout << "Processing time (wall): " << ( ret == 0 ? totalWall / 1000.0 : -1 ) << " s\n";
+ 
+@@ -62,7 +71,7 @@
+ 
+   auto totalUserChild = duration_cast<ms>( clockUser.children.count() ).count();
+   std::cout << "Processing time (user.children): " << ( ret == 0 ? totalUserChild / 1000.0 : -1 ) << " s\n";
+-
++#endif
+   std::cout << "Peak memory: " << getPeakMemory() << " KB\n";
+   return ret;
+ }
+diff -uNr source/lib/PccLibCommon/include/PCCCommon.h source-re/lib/PccLibCommon/include/PCCCommon.h
+--- source/lib/PccLibCommon/include/PCCCommon.h	2020-12-11 19:20:07.000000000 +0800
++++ source-re/lib/PccLibCommon/include/PCCCommon.h	2021-07-31 17:17:05.539122500 +0800
+@@ -263,5 +263,7 @@
+   printf( "PAPI: Processing time (wall)           : %lld \n", duration );
+ #endif
+ }  // namespace pcc
++//========================Added by Jian Xiong (jxiong@njupt.edu.cn)==================================================
++#define CALC_OUTPUT_AVG_DISTORTION 1
+ 
+ #endif /* PCCTMC2Common_h */
+diff -uNr source/lib/PccLibMetrics/include/PCCMetrics.h source-re/lib/PccLibMetrics/include/PCCMetrics.h
+--- source/lib/PccLibMetrics/include/PCCMetrics.h	2020-12-11 19:20:07.000000000 +0800
++++ source-re/lib/PccLibMetrics/include/PCCMetrics.h	2021-07-31 17:17:05.549115700 +0800
+@@ -109,6 +109,9 @@
+   std::vector<QualityMetrics> quality2;
+   std::vector<QualityMetrics> qualityF;
+   PCCMetricsParameters        params_;
++#if CALC_OUTPUT_AVG_DISTORTION
++  QualityMetrics avgQuality;
++#endif
+ };
+ 
+ };  // namespace pcc
+diff -uNr source/lib/PccLibMetrics/source/PCCMetrics.cpp source-re/lib/PccLibMetrics/source/PCCMetrics.cpp
+--- source/lib/PccLibMetrics/source/PCCMetrics.cpp	2020-12-11 19:20:07.000000000 +0800
++++ source-re/lib/PccLibMetrics/source/PCCMetrics.cpp	2021-07-31 17:25:40.582492400 +0800
+@@ -384,6 +384,13 @@
+ 
+ void PCCMetrics::display() {
+   printf( "Metrics results \n" );
++#if CALC_OUTPUT_AVG_DISTORTION
++  avgQuality.c2cPsnr_ = 0;
++  avgQuality.c2pPsnr_ = 0;
++  avgQuality.colorPsnr_[0] = 0;
++  avgQuality.colorPsnr_[1] = 0;
++  avgQuality.colorPsnr_[2] = 0;
++#endif
+   for ( size_t i = 0; i < qualityF.size(); i++ ) {
+     printf( "WARNING: %zu points with same coordinates found\n", reconstructPoints_[i] - reconstructDuplicates_[i] );
+     std::cout << "Imported intrinsic resoluiton: " << params_.resolution_ << std::endl;
+@@ -395,5 +402,23 @@
+     quality1[i].print( '1' );
+     quality2[i].print( '2' );
+     qualityF[i].print( 'F' );
++
++  #if CALC_OUTPUT_AVG_DISTORTION
++    avgQuality.c2cPsnr_ += qualityF[i].c2cPsnr_;
++    avgQuality.c2pPsnr_ += qualityF[i].c2pPsnr_;
++    avgQuality.colorPsnr_[0] += qualityF[i].colorPsnr_[0];
++    avgQuality.colorPsnr_[1] += qualityF[i].colorPsnr_[1];
++    avgQuality.colorPsnr_[2] += qualityF[i].colorPsnr_[2];
++  #endif
+   }
++
++  #if CALC_OUTPUT_AVG_DISTORTION
++    avgQuality.c2cPsnr_ /= qualityF.size();
++    avgQuality.c2pPsnr_ /= qualityF.size();
++    avgQuality.colorPsnr_[0] /= qualityF.size();
++    avgQuality.colorPsnr_[1] /= qualityF.size();
++    avgQuality.colorPsnr_[2] /= qualityF.size();
++    std::cout << "c2cPsnr_\t" << "c2pPsnr_\t" << "colorPsnr_[0]\t" << "colorPsnr_[1]\t" << "colorPsnr_[2]\t" << "wall\t" << "self\t" << "children\t"<< std::endl;
++    std::cout << avgQuality.c2cPsnr_ << "\t" << avgQuality.c2pPsnr_<<"\t" << avgQuality.colorPsnr_[0] <<"\t"<< avgQuality.colorPsnr_[1] <<"\t"<< avgQuality.colorPsnr_[2] << "\t";
++  #endif
+ }
+diff -uNr source/lib/PccLibVideoEncoder/source/PCCHMLibVideoEncoderImpl.cpp source-re/lib/PccLibVideoEncoder/source/PCCHMLibVideoEncoderImpl.cpp
+--- source/lib/PccLibVideoEncoder/source/PCCHMLibVideoEncoderImpl.cpp	2020-12-11 19:20:07.000000000 +0800
++++ source-re/lib/PccLibVideoEncoder/source/PCCHMLibVideoEncoderImpl.cpp	2021-07-31 17:17:05.576099700 +0800
+@@ -195,6 +195,9 @@
+     m_cTEncTop.setOccupancyMapFileName( m_occupancyMapFileName );
+   }
+ #endif
++#if GET_INPUTFILENAME
++  m_cTEncTop.setInputFileName(m_inputFileName);
++#endif
+   m_cTEncTop.setProfile( m_profile );
+   m_cTEncTop.setLevel( m_levelTier, m_level );
+   m_cTEncTop.setProgressiveSourceFlag( m_progressiveSourceFlag );

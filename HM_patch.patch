@@ -1,0 +1,304 @@
+diff -uNr source/App/TAppEncoder/TAppEncTop.cpp source-re/App/TAppEncoder/TAppEncTop.cpp
+--- source/App/TAppEncoder/TAppEncTop.cpp	2021-07-31 16:52:29.368035500 +0800
++++ source-re/App/TAppEncoder/TAppEncTop.cpp	2021-06-28 13:12:24.721654200 +0800
+@@ -96,6 +96,9 @@
+ 	//m_cTencTop.setPatchInfoFileName                                 ( m_patchInfoFileName );
+   }
+ #endif
++#if GET_INPUTFILENAME
++  m_cTEncTop.setInputFileName(m_inputFileName);
++#endif
+ 
+   m_cTEncTop.setProfile                                           ( m_profile);
+   m_cTEncTop.setLevel                                             ( m_levelTier, m_level);
+diff -uNr source/Lib/TLibCommon/TComRdCost.cpp source-re/Lib/TLibCommon/TComRdCost.cpp
+--- source/Lib/TLibCommon/TComRdCost.cpp	2021-07-31 16:52:30.545356600 +0800
++++ source-re/Lib/TLibCommon/TComRdCost.cpp	2021-06-28 16:23:01.906087700 +0800
+@@ -73,7 +73,11 @@
+       lambda = m_dLambdaMotionSAD[0]; // 0 is valid, because for lossless blocks, the cost equation is modified to compensate.
+       break;
+     case DF_DEFAULT:
++#if OCCUPANCYMAP_GUIDED_GEOCODING 
++	    lambda = m_dLambda*refinePara;
++#else
+       lambda = m_dLambda;
++#endif
+       break;
+     case DF_SSE_FRAME:
+       lambda = m_dFrameLambda;
+diff -uNr source/Lib/TLibCommon/TComRom.cpp source-re/Lib/TLibCommon/TComRom.cpp
+--- source/Lib/TLibCommon/TComRom.cpp	2021-07-31 16:52:30.641306100 +0800
++++ source-re/Lib/TLibCommon/TComRom.cpp	2021-06-28 16:23:36.140997100 +0800
+@@ -769,7 +769,9 @@
+ 
+ Bool g_patchesChange[PCC_ME_EXT_MAX_NUM_PATCHES];
+ #endif
+-
++#if OCCUPANCYMAP_GUIDED_GEOCODING 
++Double refinePara;
++#endif
+ //! \}
+ 
+ 
+diff -uNr source/Lib/TLibCommon/TComRom.h source-re/Lib/TLibCommon/TComRom.h
+--- source/Lib/TLibCommon/TComRom.h	2021-07-31 16:52:30.663288900 +0800
++++ source-re/Lib/TLibCommon/TComRom.h	2021-06-28 16:23:53.984284600 +0800
+@@ -183,7 +183,9 @@
+ extern long long g_patch3DInfo[PCC_ME_EXT_MAX_NUM_FRAMES][PCC_ME_EXT_MAX_NUM_PATCHES][3];  // d1, u1, v1
+ extern Bool g_patchesChange[PCC_ME_EXT_MAX_NUM_PATCHES];
+ #endif
+-
++#if OCCUPANCYMAP_GUIDED_GEOCODING 
++extern Double refinePara;
++#endif
+ //! \}
+ 
+ } // namespace pcc_hm
+diff -uNr source/Lib/TLibCommon/TComYuv.cpp source-re/Lib/TLibCommon/TComYuv.cpp
+--- source/Lib/TLibCommon/TComYuv.cpp	2021-07-31 16:52:30.931135500 +0800
++++ source-re/Lib/TLibCommon/TComYuv.cpp	2021-06-28 16:25:35.511855000 +0800
+@@ -44,6 +44,10 @@
+ #include "CommonDef.h"
+ #include "TComYuv.h"
+ #include "TComInterpolationFilter.h"
++#if OCCUPANCYMAP_GUIDED_GEOCODING
++#include "TComDataCU.h"
++#include "TComPic.h"
++#endif
+ namespace pcc_hm {
+ 
+ //! \ingroup TLibCommon
+@@ -349,6 +353,33 @@
+   }
+ }
+ 
++#if OCCUPANCYMAP_GUIDED_GEOCODING
++Void TComYuv::refinePred( const UInt uiTrUnitIdx, TComDataCU* pcCU )
++{
++  const ComponentID compID=ComponentID(0);
++  Int uiPartSize  = pcCU->getWidth(0);
++  const Int uiPartWidth =uiPartSize>>getComponentScaleX(compID);
++  const Int uiPartHeight=uiPartSize>>getComponentScaleY(compID);
++  Pel* pRes = getAddr( compID, uiTrUnitIdx, uiPartWidth );
++  const Int  iReStride  = getStride(compID);
++
++  Int picWidth = pcCU->getSlice()->getSPS()->getPicWidthInLumaSamples();
++  Int* occupancyMap = pcCU->getPic()->getOccupancyMap();  
++  occupancyMap += pcCU->getCUPelY() * picWidth + pcCU->getCUPelX();
++    for (Int y = uiPartHeight-1; y >= 0; y-- )
++    {
++      for (Int x = uiPartWidth-1; x >= 0; x-- )
++      {
++		  if (occupancyMap[x] == 1)
++		  {
++            pRes[x] = pRes[x]+1; 
++		  }
++      }
++      pRes  += iReStride;
++	  occupancyMap += picWidth;
++    }
++}
++#endif
+ 
+ 
+ 
+diff -uNr source/Lib/TLibCommon/TComYuv.h source-re/Lib/TLibCommon/TComYuv.h
+--- source/Lib/TLibCommon/TComYuv.h	2021-07-31 16:52:30.955120600 +0800
++++ source-re/Lib/TLibCommon/TComYuv.h	2021-06-28 16:26:37.418742400 +0800
+@@ -42,6 +42,10 @@
+ #include "CommonDef.h"
+ #include "TComPicYuv.h"
+ #include "TComRectangle.h"
++#if OCCUPANCYMAP_GUIDED_GEOCODING
++#include "TComDataCU.h"
++#include "TComPic.h"
++#endif
+ namespace pcc_hm {
+ 
+ //! \ingroup TLibCommon
+@@ -136,6 +140,9 @@
+   //  pcYuvSrc0 - pcYuvSrc1 -> m_apiBuf
+   Void         subtract                   ( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt uiTrUnitIdx, const UInt uiPartSize );
+ 
++  #if OCCUPANCYMAP_GUIDED_GEOCODING
++	Void refinePred( const UInt uiTrUnitIdx, TComDataCU* pcCU );
++  #endif
+   //  (pcYuvSrc0 + pcYuvSrc1)/2 for YUV partition
+   Void         addAvg                     ( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt iPartUnitIdx, const UInt iWidth, const UInt iHeight, const BitDepths &clipBitDepths );
+ 
+diff -uNr source/Lib/TLibCommon/TypeDef.h source-re/Lib/TLibCommon/TypeDef.h
+--- source/Lib/TLibCommon/TypeDef.h	2021-07-31 16:52:30.980106200 +0800
++++ source-re/Lib/TLibCommon/TypeDef.h	2021-06-28 16:48:21.530221000 +0800
+@@ -59,7 +59,8 @@
+ #define PCC_ME_EXT_MAX_NUM_PATCHES                        1000
+ #define PCC_ME_NUM_LAYERS_ACTIVE                          2
+ #endif
+-
++#define GET_INPUTFILENAME                                 1
++#define OCCUPANCYMAP_GUIDED_GEOCODING 1
+ // ====================================================================================================================
+ // Debugging
+ // ====================================================================================================================
+diff -uNr source/Lib/TLibEncoder/TEncCfg.h source-re/Lib/TLibEncoder/TEncCfg.h
+--- source/Lib/TLibEncoder/TEncCfg.h	2021-07-31 16:52:31.893580400 +0800
++++ source-re/Lib/TLibEncoder/TEncCfg.h	2021-06-28 14:08:47.290004800 +0800
+@@ -138,6 +138,9 @@
+ 	Bool        m_usePCCExt;
+ 	//std::string m_patchInfoFileName;
+ #endif
++#if GET_INPUTFILENAME
++  std::string m_InputFileName;  
++#endif
+   //==== File I/O ========
+   Int       m_iFrameRate;
+   Int       m_FrameSkip;
+@@ -576,6 +579,10 @@
+   Void setUsePCCExt(Bool value) { m_usePCCExt = value; }
+   Bool getUsePCCExt()         const { return m_usePCCExt; }
+ #endif
++#if GET_INPUTFILENAME
++  Void setInputFileName(std::string inputFileName) { m_InputFileName = inputFileName; }
++  std::string getInputFileName() { return m_InputFileName; }
++#endif
+ 
+   Void setProfile(Profile::Name profile) { m_profile = profile; }
+   Void setLevel(Level::Tier tier, Level::Name level) { m_levelTier = tier; m_level = level; }
+diff -uNr source/Lib/TLibEncoder/TEncCu.cpp source-re/Lib/TLibEncoder/TEncCu.cpp
+--- source/Lib/TLibEncoder/TEncCu.cpp	2021-07-31 16:52:31.937554700 +0800
++++ source-re/Lib/TLibEncoder/TEncCu.cpp	2021-07-31 16:39:09.035379300 +0800
+@@ -581,8 +581,24 @@
+ 
+   const Bool bBoundary = !( uiRPelX < sps.getPicWidthInLumaSamples() && uiBPelY < sps.getPicHeightInLumaSamples() );
+ 
++#if OCCUPANCYMAP_GUIDED_GEOCODING  
++  if(uiDepth == 0  )
++	  {
++		refinePara = 1;
++	  }
++#endif
++
+   if ( !bBoundary )
+   {
++#if OCCUPANCYMAP_GUIDED_GEOCODING
++  	if(rpcBestCU->getSlice()->getSliceType() != I_SLICE &&m_pcEncCfg->getInputFileName().find("geometry")!=string::npos && pcPic->getPOC()%2 == 1)
++	  {
++		  if(uiDepth == 0  )
++		  {
++			  refinePara = calcNorm( 0, m_ppcOrigYuv[uiDepth]);
++		  }
++	  }
++#endif
+     for (Int iQP=iMinQP; iQP<=iMaxQP; iQP++)
+     {
+       const Bool bIsLosslessMode = isAddLowestQP && (iQP == iMinQP);
+@@ -1876,6 +1892,12 @@
+ #endif
+           // do MC
+           m_pcPredSearch->motionCompensation ( rpcTempCU, m_ppcPredYuvTemp[uhDepth] );
++#if OCCUPANCYMAP_GUIDED_GEOCODING
++    		  if(m_pcEncCfg->getInputFileName().find("geometry")!=string::npos&& rpcTempCU->getSlice()->getPOC()%2 == 1)
++		      {
++			      m_ppcPredYuvTemp[uhDepth]->refinePred(0,rpcBestCU);
++		      }
++#endif
+           Bool bColourTrans = (m_pcEncCfg->getRGBFormatFlag() && rpcBestCU->getSlice()->getPPS()->getPpsScreenExtension().getUseColourTrans())? true : false;
+ 
+           if ( bTransquantBypassFlag && (sps.getBitDepth( CHANNEL_TYPE_LUMA ) != sps.getBitDepth( CHANNEL_TYPE_CHROMA )) )
+@@ -2221,6 +2243,44 @@
+   }
+ }
+ 
++#if OCCUPANCYMAP_GUIDED_GEOCODING
++Double TEncCu::calcNorm( const UInt absPartIdx, const TComYuv * pOrgYuv )
++{
++  const Pel *piOrg = pOrgYuv->getAddr(COMPONENT_Y, absPartIdx);
++  const Int iStrideOrg  = pOrgYuv->getStride(COMPONENT_Y);
++  
++  Double angleCosinepower2 = 0;
++  Double tempgradA = 0;
++  Double tempgradB = 0;
++  Int num_block = 0;
++  Double tempCosinePower2 = 0;
++  for(Int r = 0; r< 64; r+=4 )
++  {
++		for (Int n = 0; n < 64; n+=4 )
++		{
++			tempgradA = 3*( piOrg[n] + piOrg[n+1] + piOrg[n+2] + piOrg[n+3] 
++			- piOrg[n+3*iStrideOrg] - piOrg[n+3*iStrideOrg+1] - piOrg[n+3*iStrideOrg+2] - piOrg[n+3*iStrideOrg+3] ) + 
++				( piOrg[n+iStrideOrg] + piOrg[n+iStrideOrg+1] + piOrg[n+iStrideOrg+2] + piOrg[n+iStrideOrg+3]) -
++				( piOrg[n+2*iStrideOrg] + piOrg[n+2*iStrideOrg+1] + piOrg[n+2*iStrideOrg+2] + piOrg[n+2*iStrideOrg+3]);
++			tempgradB = 3*( piOrg[n] + piOrg[n+iStrideOrg] + piOrg[n+2*iStrideOrg] + piOrg[n+3*iStrideOrg] - 
++				piOrg[n+3] - piOrg[n+iStrideOrg+3] - piOrg[n+2*iStrideOrg+3] - piOrg[n+3*iStrideOrg+3]) +
++				( piOrg[n+1] + piOrg[n+iStrideOrg+1] + piOrg[n+2*iStrideOrg+1] + piOrg[n+3*iStrideOrg+1]) -
++				( piOrg[n+2] + piOrg[n+iStrideOrg+2] + piOrg[n+2*iStrideOrg+2] + piOrg[n+3*iStrideOrg+2]);	
++      
++      tempCosinePower2 = tempgradA * tempgradA + tempgradB * tempgradB;
++      if(tempCosinePower2<=3200)
++      {
++        angleCosinepower2 += tempCosinePower2;
++        num_block++;
++      }
++		}
++		piOrg += 4*iStrideOrg;
++  }
++  if(num_block!=0) angleCosinepower2 /=(num_block*1600);
++  return angleCosinepower2+1;	  	  	  
++}
++#endif
++
+ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
+                                 TComDataCU *&rpcTempCU,
+                                 Double      &cost,
+diff -uNr source/Lib/TLibEncoder/TEncCu.h source-re/Lib/TLibEncoder/TEncCu.h
+--- source/Lib/TLibEncoder/TEncCu.h	2021-07-31 16:52:31.965539800 +0800
++++ source-re/Lib/TLibEncoder/TEncCu.h	2021-06-28 16:46:03.874666400 +0800
+@@ -144,7 +144,9 @@
+   Void  xCheckBestMode      ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, UInt uiDepth DEBUG_STRING_FN_DECLARE(sParent) DEBUG_STRING_FN_DECLARE(sTest) DEBUG_STRING_PASS_INTO(Bool bAddSizeInfo=true));
+ 
+   Void  xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU DEBUG_STRING_FN_DECLARE(sDebug), Bool *earlyDetectionSkipMode, Bool checkSkipOnly );
+-
++#if OCCUPANCYMAP_GUIDED_GEOCODING
++  Double calcNorm( const UInt absPartIdx, const TComYuv * pOrgYuv );
++#endif
+ #if AMP_MRG
+   Void  xCheckRDCostInter   ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, PartSize ePartSize DEBUG_STRING_FN_DECLARE(sDebug), Bool bUseMRG = false, TComMv *iMVCandList = NULL );
+ #else
+diff -uNr source/Lib/TLibEncoder/TEncGOP.cpp source-re/Lib/TLibEncoder/TEncGOP.cpp
+--- source/Lib/TLibEncoder/TEncGOP.cpp	2021-07-31 16:52:32.045492900 +0800
++++ source-re/Lib/TLibEncoder/TEncGOP.cpp	2021-06-28 16:56:47.158240200 +0800
+@@ -1786,7 +1786,27 @@
+ 				printf("error: Resolution does not match");
+ 			}
+ 			fclose(blockToPatchFile);
++#if OCCUPANCYMAP_GUIDED_GEOCODING
++		}
+ 
++		if(m_pcEncTop->getInputFileName().find("geometry")!=string::npos||(pcSlice->getPOC() % PCC_ME_NUM_LAYERS_ACTIVE == 0 && usePccME))
++		{
++		  Int picW = pcPic->getPicYuvRec()->getWidth(COMPONENT_Y);
++          Int picH = pcPic->getPicYuvRec()->getHeight(COMPONENT_Y);
++		      long long offs = (long long)(pcSlice->getPOC() / 2) * picW * picH;
++          std::string occupancyMapFileName = m_pcEncTop->getOccupancyMapFileName();
++          FILE* occupancyMapFile = NULL;
++          occupancyMapFile = fopen(occupancyMapFileName.c_str(), "rb");
++          fseek(occupancyMapFile, offs * sizeof(Int), SEEK_SET);
++          Int* occupancyMap = pcPic->getOccupancyMap();
++          size_t readSize = fread(occupancyMap, sizeof(Int), picW * picH, occupancyMapFile);
++          if (readSize != picW * picH)
++          {
++            printf("error!");
++          }
++          fclose(occupancyMapFile);  
++		}
++#else  
+ 			offset = (long long)currPOC * picWidth * picHeight;
+ 			std::string occupancyMapFileName = m_pcEncTop->getOccupancyMapFileName();
+ 			FILE* occupancyMapFile = NULL;
+@@ -1800,6 +1820,7 @@
+ 			}
+ 			fclose(occupancyMapFile);
+ 		}
++#endif
+ 		if (usePccME)
+ 		{
+ 			for (Int i = 0; i < PCC_ME_EXT_MAX_NUM_PATCHES; i++)
