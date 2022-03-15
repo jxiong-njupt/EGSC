@@ -1,6 +1,6 @@
 diff -uNr source/App/TAppEncoder/TAppEncTop.cpp source-re/App/TAppEncoder/TAppEncTop.cpp
 --- source/App/TAppEncoder/TAppEncTop.cpp	2021-07-31 16:52:29.368035500 +0800
-+++ source-re/App/TAppEncoder/TAppEncTop.cpp	2021-06-28 13:12:24.721654200 +0800
++++ source-re/App/TAppEncoder/TAppEncTop.cpp	2021-08-13 20:32:25.490681400 +0800
 @@ -96,6 +96,9 @@
  	//m_cTencTop.setPatchInfoFileName                                 ( m_patchInfoFileName );
    }
@@ -13,7 +13,7 @@ diff -uNr source/App/TAppEncoder/TAppEncTop.cpp source-re/App/TAppEncoder/TAppEn
    m_cTEncTop.setLevel                                             ( m_levelTier, m_level);
 diff -uNr source/Lib/TLibCommon/TComRdCost.cpp source-re/Lib/TLibCommon/TComRdCost.cpp
 --- source/Lib/TLibCommon/TComRdCost.cpp	2021-07-31 16:52:30.545356600 +0800
-+++ source-re/Lib/TLibCommon/TComRdCost.cpp	2021-06-28 16:23:01.906087700 +0800
++++ source-re/Lib/TLibCommon/TComRdCost.cpp	2021-08-13 20:32:25.490681400 +0800
 @@ -73,7 +73,11 @@
        lambda = m_dLambdaMotionSAD[0]; // 0 is valid, because for lossless blocks, the cost equation is modified to compensate.
        break;
@@ -28,7 +28,7 @@ diff -uNr source/Lib/TLibCommon/TComRdCost.cpp source-re/Lib/TLibCommon/TComRdCo
        lambda = m_dFrameLambda;
 diff -uNr source/Lib/TLibCommon/TComRom.cpp source-re/Lib/TLibCommon/TComRom.cpp
 --- source/Lib/TLibCommon/TComRom.cpp	2021-07-31 16:52:30.641306100 +0800
-+++ source-re/Lib/TLibCommon/TComRom.cpp	2021-06-28 16:23:36.140997100 +0800
++++ source-re/Lib/TLibCommon/TComRom.cpp	2021-08-13 20:32:25.490681400 +0800
 @@ -769,7 +769,9 @@
  
  Bool g_patchesChange[PCC_ME_EXT_MAX_NUM_PATCHES];
@@ -42,7 +42,7 @@ diff -uNr source/Lib/TLibCommon/TComRom.cpp source-re/Lib/TLibCommon/TComRom.cpp
  
 diff -uNr source/Lib/TLibCommon/TComRom.h source-re/Lib/TLibCommon/TComRom.h
 --- source/Lib/TLibCommon/TComRom.h	2021-07-31 16:52:30.663288900 +0800
-+++ source-re/Lib/TLibCommon/TComRom.h	2021-06-28 16:23:53.984284600 +0800
++++ source-re/Lib/TLibCommon/TComRom.h	2021-08-13 20:32:25.490681400 +0800
 @@ -183,7 +183,9 @@
  extern long long g_patch3DInfo[PCC_ME_EXT_MAX_NUM_FRAMES][PCC_ME_EXT_MAX_NUM_PATCHES][3];  // d1, u1, v1
  extern Bool g_patchesChange[PCC_ME_EXT_MAX_NUM_PATCHES];
@@ -56,7 +56,7 @@ diff -uNr source/Lib/TLibCommon/TComRom.h source-re/Lib/TLibCommon/TComRom.h
  } // namespace pcc_hm
 diff -uNr source/Lib/TLibCommon/TComYuv.cpp source-re/Lib/TLibCommon/TComYuv.cpp
 --- source/Lib/TLibCommon/TComYuv.cpp	2021-07-31 16:52:30.931135500 +0800
-+++ source-re/Lib/TLibCommon/TComYuv.cpp	2021-06-28 16:25:35.511855000 +0800
++++ source-re/Lib/TLibCommon/TComYuv.cpp	2021-09-14 10:12:43.694452000 +0800
 @@ -44,6 +44,10 @@
  #include "CommonDef.h"
  #include "TComYuv.h"
@@ -89,10 +89,10 @@ diff -uNr source/Lib/TLibCommon/TComYuv.cpp source-re/Lib/TLibCommon/TComYuv.cpp
 +    {
 +      for (Int x = uiPartWidth-1; x >= 0; x-- )
 +      {
-+		  if (occupancyMap[x] == 1)
-+		  {
++		    if (occupancyMap[x] == 1)
++		    {
 +            pRes[x] = pRes[x]+1; 
-+		  }
++		    }
 +      }
 +      pRes  += iReStride;
 +	  occupancyMap += picWidth;
@@ -104,7 +104,7 @@ diff -uNr source/Lib/TLibCommon/TComYuv.cpp source-re/Lib/TLibCommon/TComYuv.cpp
  
 diff -uNr source/Lib/TLibCommon/TComYuv.h source-re/Lib/TLibCommon/TComYuv.h
 --- source/Lib/TLibCommon/TComYuv.h	2021-07-31 16:52:30.955120600 +0800
-+++ source-re/Lib/TLibCommon/TComYuv.h	2021-06-28 16:26:37.418742400 +0800
++++ source-re/Lib/TLibCommon/TComYuv.h	2021-08-13 20:32:25.490681400 +0800
 @@ -42,6 +42,10 @@
  #include "CommonDef.h"
  #include "TComPicYuv.h"
@@ -128,20 +128,20 @@ diff -uNr source/Lib/TLibCommon/TComYuv.h source-re/Lib/TLibCommon/TComYuv.h
  
 diff -uNr source/Lib/TLibCommon/TypeDef.h source-re/Lib/TLibCommon/TypeDef.h
 --- source/Lib/TLibCommon/TypeDef.h	2021-07-31 16:52:30.980106200 +0800
-+++ source-re/Lib/TLibCommon/TypeDef.h	2021-06-28 16:48:21.530221000 +0800
++++ source-re/Lib/TLibCommon/TypeDef.h	2022-01-20 21:27:21.608936600 +0800
 @@ -59,7 +59,8 @@
  #define PCC_ME_EXT_MAX_NUM_PATCHES                        1000
  #define PCC_ME_NUM_LAYERS_ACTIVE                          2
  #endif
 -
 +#define GET_INPUTFILENAME                                 1
-+#define OCCUPANCYMAP_GUIDED_GEOCODING 1
++#define OCCUPANCYMAP_GUIDED_GEOCODING                     1
  // ====================================================================================================================
  // Debugging
  // ====================================================================================================================
 diff -uNr source/Lib/TLibEncoder/TEncCfg.h source-re/Lib/TLibEncoder/TEncCfg.h
 --- source/Lib/TLibEncoder/TEncCfg.h	2021-07-31 16:52:31.893580400 +0800
-+++ source-re/Lib/TLibEncoder/TEncCfg.h	2021-06-28 14:08:47.290004800 +0800
++++ source-re/Lib/TLibEncoder/TEncCfg.h	2021-08-13 20:32:25.490681400 +0800
 @@ -138,6 +138,9 @@
  	Bool        m_usePCCExt;
  	//std::string m_patchInfoFileName;
@@ -165,7 +165,7 @@ diff -uNr source/Lib/TLibEncoder/TEncCfg.h source-re/Lib/TLibEncoder/TEncCfg.h
    Void setLevel(Level::Tier tier, Level::Name level) { m_levelTier = tier; m_level = level; }
 diff -uNr source/Lib/TLibEncoder/TEncCu.cpp source-re/Lib/TLibEncoder/TEncCu.cpp
 --- source/Lib/TLibEncoder/TEncCu.cpp	2021-07-31 16:52:31.937554700 +0800
-+++ source-re/Lib/TLibEncoder/TEncCu.cpp	2021-07-31 16:39:09.035379300 +0800
++++ source-re/Lib/TLibEncoder/TEncCu.cpp	2022-01-25 01:01:14.880058500 +0800
 @@ -581,8 +581,24 @@
  
    const Bool bBoundary = !( uiRPelX < sps.getPicWidthInLumaSamples() && uiBPelY < sps.getPicHeightInLumaSamples() );
@@ -184,7 +184,7 @@ diff -uNr source/Lib/TLibEncoder/TEncCu.cpp source-re/Lib/TLibEncoder/TEncCu.cpp
 +	  {
 +		  if(uiDepth == 0  )
 +		  {
-+			  refinePara = calcNorm( 0, m_ppcOrigYuv[uiDepth]);
++			 // refinePara = calcNorm( 0, m_ppcOrigYuv[uiDepth]);
 +		  }
 +	  }
 +#endif
@@ -196,15 +196,15 @@ diff -uNr source/Lib/TLibEncoder/TEncCu.cpp source-re/Lib/TLibEncoder/TEncCu.cpp
            // do MC
            m_pcPredSearch->motionCompensation ( rpcTempCU, m_ppcPredYuvTemp[uhDepth] );
 +#if OCCUPANCYMAP_GUIDED_GEOCODING
-+    		  if(m_pcEncCfg->getInputFileName().find("geometry")!=string::npos&& rpcTempCU->getSlice()->getPOC()%2 == 1)
++    		  if(m_pcEncCfg->getInputFileName().find("geometry")!=string::npos&& rpcTempCU->getSlice()->getPOC()%2 == 1&&uiNoResidual == 0)
 +		      {
-+			      m_ppcPredYuvTemp[uhDepth]->refinePred(0,rpcBestCU);
++			      m_ppcPredYuvTemp[uhDepth]->refinePred(0,rpcBestCU);            
 +		      }
 +#endif
            Bool bColourTrans = (m_pcEncCfg->getRGBFormatFlag() && rpcBestCU->getSlice()->getPPS()->getPpsScreenExtension().getUseColourTrans())? true : false;
  
            if ( bTransquantBypassFlag && (sps.getBitDepth( CHANNEL_TYPE_LUMA ) != sps.getBitDepth( CHANNEL_TYPE_CHROMA )) )
-@@ -2221,6 +2243,44 @@
+@@ -2221,6 +2243,50 @@
    }
  }
  
@@ -235,14 +235,20 @@ diff -uNr source/Lib/TLibEncoder/TEncCu.cpp source-re/Lib/TLibEncoder/TEncCu.cpp
 +      tempCosinePower2 = tempgradA * tempgradA + tempgradB * tempgradB;
 +      if(tempCosinePower2<=3200)
 +      {
-+        angleCosinepower2 += tempCosinePower2;
-+        num_block++;
++        angleCosinepower2 +=  1/(tempCosinePower2/1600 + 1);
++       // num_block++;
 +      }
++      else
++      {
++        angleCosinepower2 +=  0.5;
++      }
++      
 +		}
 +		piOrg += 4*iStrideOrg;
 +  }
-+  if(num_block!=0) angleCosinepower2 /=(num_block*1600);
-+  return angleCosinepower2+1;	  	  	  
++ // if(num_block!=0) angleCosinepower2 =num_block/angleCosinepower2;
++ // else angleCosinepower2 = 1;
++  return angleCosinepower2= 256.0/angleCosinepower2;	  	  	  
 +}
 +#endif
 +
@@ -251,7 +257,7 @@ diff -uNr source/Lib/TLibEncoder/TEncCu.cpp source-re/Lib/TLibEncoder/TEncCu.cpp
                                  Double      &cost,
 diff -uNr source/Lib/TLibEncoder/TEncCu.h source-re/Lib/TLibEncoder/TEncCu.h
 --- source/Lib/TLibEncoder/TEncCu.h	2021-07-31 16:52:31.965539800 +0800
-+++ source-re/Lib/TLibEncoder/TEncCu.h	2021-06-28 16:46:03.874666400 +0800
++++ source-re/Lib/TLibEncoder/TEncCu.h	2021-08-13 20:32:25.506104000 +0800
 @@ -144,7 +144,9 @@
    Void  xCheckBestMode      ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, UInt uiDepth DEBUG_STRING_FN_DECLARE(sParent) DEBUG_STRING_FN_DECLARE(sTest) DEBUG_STRING_PASS_INTO(Bool bAddSizeInfo=true));
  
@@ -265,7 +271,7 @@ diff -uNr source/Lib/TLibEncoder/TEncCu.h source-re/Lib/TLibEncoder/TEncCu.h
  #else
 diff -uNr source/Lib/TLibEncoder/TEncGOP.cpp source-re/Lib/TLibEncoder/TEncGOP.cpp
 --- source/Lib/TLibEncoder/TEncGOP.cpp	2021-07-31 16:52:32.045492900 +0800
-+++ source-re/Lib/TLibEncoder/TEncGOP.cpp	2021-06-28 16:56:47.158240200 +0800
++++ source-re/Lib/TLibEncoder/TEncGOP.cpp	2021-08-13 20:32:25.506104000 +0800
 @@ -1786,7 +1786,27 @@
  				printf("error: Resolution does not match");
  			}
